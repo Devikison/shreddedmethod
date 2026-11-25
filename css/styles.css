@@ -924,11 +924,15 @@ html.js .vsl { opacity: 0; animation: fade .8s var(--ease) .4s forwards; }
 .depo__selo img { width: 38px; height: auto; display: block; }
 .depo__nome { font-family: var(--f-display); font-weight: 800; font-size: 1.25rem; letter-spacing: 0.02em; text-transform: uppercase; color: var(--blue); }
 @keyframes depo { to { transform: translateX(-25%); } }
-@media (hover: hover) { .depo:hover .depo__trilho { animation-play-state: paused; } }
-.depo:focus-within .depo__trilho, .depo:focus .depo__trilho { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
   .depo { -webkit-mask-image: none; mask-image: none; }
   .depo__linha { overflow-x: auto; }
   .depo__trilho { animation: none; padding-inline: var(--m); }
   .depo__grupo[aria-hidden="true"] { display: none; }
 }
+/* com JS: o movimento é feito no main.js (contínuo + arrasto com inércia) */
+.depo.is-js .depo__trilho { animation: none; padding-inline: 0; }
+.depo.is-js .depo__linha { overflow: hidden; cursor: grab; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.depo.is-js .depo__linha.is-drag { cursor: grabbing; }
+.depo.is-js .depo__grupo[aria-hidden="true"] { display: flex; }
+.depo.is-js img { -webkit-user-drag: none; pointer-events: none; }

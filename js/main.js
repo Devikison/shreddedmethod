@@ -300,3 +300,73 @@
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go);
   addEventListener("resize", go);
 })();
+
+/* ---------- Feedbacks: carrossel contínuo com arrasto (mouse e toque) ---------- */
+(function () {
+  var box = document.querySelector(".depo");
+  if (!box || !window.requestAnimationFrame) return;
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var BASE = 46, visivel = true, ultimo = 0;
+  box.classList.add("is-js");
+  var linhas = Array.prototype.map.call(box.querySelectorAll(".depo__linha"), function (el, i) {
+    var t = el.querySelector(".depo__trilho");
+    return { el: el, t: t, g: t.querySelector(".depo__grupo"), w: 1, x: 0, base: reduce ? 0 : (i % 2 ? BASE : -BASE), v: 0, drag: false, moveu: false };
+  });
+  linhas.forEach(function (o) { o.v = o.base; });
+  function medir() { linhas.forEach(function (o) { o.w = o.g.getBoundingClientRect().width || 1; pinta(o); }); }
+  function pinta(o) {
+    var x = o.x % o.w; if (x > 0) x -= o.w;
+    o.x = x; o.t.style.transform = "translate3d(" + x.toFixed(2) + "px,0,0)";
+  }
+  function quadro(agora) {
+    var dt = Math.min(0.05, (agora - ultimo) / 1000 || 0); ultimo = agora;
+    if (visivel) linhas.forEach(function (o) {
+      if (o.drag) return;
+      o.v += (o.base - o.v) * (1 - Math.exp(-dt * 2.6));   /* a inércia do arrasto volta suave para a velocidade normal */
+      o.x += o.v * dt; pinta(o);
+    });
+    requestAnimationFrame(quadro);
+  }
+  linhas.forEach(function (o) {
+    var id = null, x0 = 0, base0 = 0, px = 0, pt = 0, vel = 0;
+    function soltar() {
+      if (id === null) return;
+      try { o.el.releasePointerCapture(id); } catch (e) {}
+      id = null; o.drag = false; o.el.classList.remove("is-drag");
+      o.v = o.moveu ? Math.max(-2600, Math.min(2600, vel)) : o.base;
+    }
+    o.el.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      id = e.pointerId; x0 = px = e.clientX; base0 = o.x; pt = e.timeStamp; vel = 0; o.moveu = false; o.drag = true;
+    });
+    o.el.addEventListener("pointermove", function (e) {
+      if (e.pointerId !== id) return;
+      var dx = e.clientX - x0;
+      if (!o.moveu) {
+        if (Math.abs(dx) < 5) return;
+        o.moveu = true; o.el.classList.add("is-drag");
+        try { o.el.setPointerCapture(id); } catch (err) {}
+      }
+      var dt = (e.timeStamp - pt) / 1000;
+      if (dt > 0) vel = vel * 0.6 + ((e.clientX - px) / dt) * 0.4;
+      px = e.clientX; pt = e.timeStamp;
+      o.x = base0 + dx; pinta(o);
+    });
+    o.el.addEventListener("pointerup", soltar);
+    o.el.addEventListener("pointercancel", soltar);
+    o.el.addEventListener("lostpointercapture", soltar);
+    o.el.addEventListener("dragstart", function (e) { e.preventDefault(); });
+  });
+  box.addEventListener("keydown", function (e) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    var s = e.key === "ArrowRight" ? -900 : 900;
+    linhas.forEach(function (o) { o.v = s; });
+  });
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (es) { visivel = es[0].isIntersecting; }, { rootMargin: "200px 0px" }).observe(box);
+  }
+  window.addEventListener("resize", medir);
+  window.addEventListener("load", medir);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir);
+  medir(); requestAnimationFrame(function (t) { ultimo = t; requestAnimationFrame(quadro); });
+})();
